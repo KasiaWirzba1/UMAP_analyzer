@@ -4,8 +4,6 @@ import numpy as np
 
 
 class UMAPEmbedder:
-
-
     def __init__(self, n_neighbors: int = 15, min_dist: float = 0.1, n_components: int = 3):
         self.n_neighbors = n_neighbors
         self.min_dist = min_dist
