@@ -2,8 +2,8 @@
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QComboBox, QLabel, QSlider, QCheckBox,
-    QGroupBox, QSpinBox
+    QPushButton, QComboBox, QLabel, QCheckBox,
+    QGroupBox
 )
 from PySide6.QtCore import Qt
 from src.services.umap_service import UMAPService
@@ -85,61 +85,17 @@ class MainWindow(QMainWindow):
         params_group.setLayout(params_layout)
 
         # n_neighbors
+        # daj to:
         params_layout.addWidget(QLabel("n_neighbors:"))
-        self.neighbors_slider = QSlider(Qt.Horizontal)
-        self.neighbors_slider.setMinimum(5)
-        self.neighbors_slider.setMaximum(100)
-        self.neighbors_slider.setValue(15)
-        self.neighbors_slider.setTickPosition(QSlider.TicksBelow)
-        self.neighbors_slider.setTickInterval(5)
-        params_layout.addWidget(self.neighbors_slider)
-
-        self.neighbors_label = QLabel("15")
-        params_layout.addWidget(self.neighbors_label)
-        self.neighbors_slider.valueChanged.connect(
-            lambda v: self.neighbors_label.setText(str(v))
-        )
-
-        # min_dist
-        params_layout.addWidget(QLabel("min_dist:"))
-        self.min_dist_slider = QSlider(Qt.Horizontal)
-        self.min_dist_slider.setMinimum(1)
-        self.min_dist_slider.setMaximum(100)
-        self.min_dist_slider.setValue(10)  # 0.1 * 100
-        self.min_dist_slider.setTickPosition(QSlider.TicksBelow)
-        self.min_dist_slider.setTickInterval(10)
-        params_layout.addWidget(self.min_dist_slider)
-
-        self.min_dist_label = QLabel("0.1")
-        params_layout.addWidget(self.min_dist_label)
-        self.min_dist_slider.valueChanged.connect(
-            lambda v: self.min_dist_label.setText(f"{v / 100:.2f}")
-        )
-
-        # n_components
-        params_layout.addWidget(QLabel("n_components:"))
-        self.components_spinbox = QSpinBox()
-        self.components_spinbox.setMinimum(2)
-        self.components_spinbox.setMaximum(3)
-        self.components_spinbox.setValue(3)
-        params_layout.addWidget(self.components_spinbox)
-
-        # cofactor
-        params_layout.addWidget(QLabel("Cofactor:"))
-        self.cofactor_spinbox = QSpinBox()
-        self.cofactor_spinbox.setMinimum(50)
-        self.cofactor_spinbox.setMaximum(500)
-        self.cofactor_spinbox.setValue(150)
-        self.cofactor_spinbox.setSingleStep(10)
-        params_layout.addWidget(self.cofactor_spinbox)
-
+        self.neighbors_combo = QComboBox()
+        self.neighbors_combo.addItems(["10", "15", "20"])
+        self.neighbors_combo.setCurrentText("15")
+        params_layout.addWidget(self.neighbors_combo)
         layout.addWidget(params_group)
-
 
         self.use_cache_checkbox = QCheckBox("Use cache")
         self.use_cache_checkbox.setChecked(True)
         layout.addWidget(self.use_cache_checkbox)
-
 
         self.load_left_btn = QPushButton("Load to LEFT plot")
         self.load_left_btn.clicked.connect(self.load_to_left)
@@ -149,7 +105,6 @@ class MainWindow(QMainWindow):
         self.load_right_btn.clicked.connect(self.load_to_right)
         layout.addWidget(self.load_right_btn)
 
-
         self.status_label = QLabel("Ready")
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
@@ -158,6 +113,7 @@ class MainWindow(QMainWindow):
         layout.addStretch()
 
         return controls
+
 
     def load_to_left(self):
         """Load sample to left plot"""
@@ -178,10 +134,10 @@ class MainWindow(QMainWindow):
 
         # Get parameters
         sample_name = self.sample_selector.currentText()
-        n_neighbors = self.neighbors_slider.value()
-        min_dist = self.min_dist_slider.value() / 100.0
-        n_components = self.components_spinbox.value()
-        cofactor = float(self.cofactor_spinbox.value())
+        n_neighbors = int(self.neighbors_combo.currentText())
+        min_dist = 0.1
+        n_components = 3
+        cofactor = 150.0
         use_cache = self.use_cache_checkbox.isChecked()
 
         # Update status

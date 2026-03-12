@@ -103,4 +103,25 @@ class EmbeddingCache:
         for cache_key in list(self.metadata.keys()):
             self.delete(cache_key)
 
-        print("🗑️  Cleared all cache")
+        print("🗑Cleared all cache")
+
+    def save(
+            self,
+            cache_key: str,
+            embedding: np.ndarray,
+            method: str = 'umap',
+            params: Optional[Dict[str, Any]] = None
+    ):
+        cache_path = self.cache_dir / f"{cache_key}.npy"
+        np.save(cache_path, embedding)
+
+        self.metadata[cache_key] = {
+            'path': str(cache_path),
+            'shape': list(embedding.shape),
+            'method': method,
+            'params': params or {},
+            'size_mb': round(cache_path.stat().st_size / (1024 * 1024), 3)
+        }
+
+        self._save_metadata()
+        print(f"Saved to cache: {cache_key}")
