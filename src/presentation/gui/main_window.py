@@ -7,7 +7,7 @@ DiaNA - UMAP Analyzer
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QComboBox, QLabel, QGroupBox,
-    QFileDialog, QScrollArea, QSizePolicy, QFrame
+    QFileDialog, QScrollArea, QSizePolicy, QFrame, QSplitter, QDialog, QFormLayout, QSpinBox, QDoubleSpinBox, QTabWidget
 )
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QFont
@@ -50,6 +50,107 @@ class UMAPWorker(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
+# ── Parameters dialog ────────────────────────────────────────────────────────
+
+class UMAPParamsDialog(QDialog):
+
+    def __init__(self, current_params: dict, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Modify graph")
+        self.setFixedWidth(360)
+        self.setModal(True)
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        # ── Zakładki ──────────────────────────────────────────────────────────
+        self.tabs = QTabWidget()
+        self.tabs.addTab(self._build_parameters_tab(current_params), "Parameters")
+        self.tabs.addTab(self._build_visualization_tab(current_params), "Visualization")
+        self.tabs.addTab(self._build_labels_tab(current_params), "Axes & Labels")
+        self.tabs.addTab(self._build_color_tab(current_params), "Color")
+        layout.addWidget(self.tabs)
+
+        # ── Przyciski ─────────────────────────────────────────────────────────
+        btn_layout = QHBoxLayout()
+        btn_cancel = QPushButton("Cancel")
+        btn_ok     = QPushButton("Apply")
+        btn_ok.setDefault(True)
+        btn_cancel.clicked.connect(self.reject)
+        btn_ok.clicked.connect(self.accept)
+        btn_layout.addWidget(btn_cancel)
+        btn_layout.addWidget(btn_ok)
+        layout.addLayout(btn_layout)
+
+    # ── Zakładka 1: Parameters ────────────────────────────────────────────────
+    def _build_parameters_tab(self, p: dict) -> QWidget:
+        w = QWidget()
+        form = QFormLayout(w)
+        form.setSpacing(8)
+        form.setContentsMargins(8, 12, 8, 8)
+
+        self.neighbors_spin = QSpinBox()
+        self.neighbors_spin.setRange(2, 200)
+        self.neighbors_spin.setValue(p.get("n_neighbors", 15))
+        form.addRow("n_neighbors:", self.neighbors_spin)
+
+        self.min_dist_spin = QDoubleSpinBox()
+        self.min_dist_spin.setRange(0.0, 1.0)
+        self.min_dist_spin.setSingleStep(0.05)
+        self.min_dist_spin.setDecimals(2)
+        self.min_dist_spin.setValue(p.get("min_dist", 0.1))
+        form.addRow("min_dist:", self.min_dist_spin)
+
+        self.components_spin = QSpinBox()
+        self.components_spin.setRange(2, 10)
+        self.components_spin.setValue(p.get("n_components", 3))
+        form.addRow("n_components:", self.components_spin)
+
+        self.cofactor_spin = QDoubleSpinBox()
+        self.cofactor_spin.setRange(1.0, 10000.0)
+        self.cofactor_spin.setSingleStep(10.0)
+        self.cofactor_spin.setDecimals(1)
+        self.cofactor_spin.setValue(p.get("cofactor", 150.0))
+        form.addRow("cofactor:", self.cofactor_spin)
+
+        return w
+
+    # ── Zakładka 2: Visualization ─────────────────────────────────────────────
+    def _build_visualization_tab(self, p: dict) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+        layout.setContentsMargins(8, 12, 8, 8)
+        layout.addWidget(QLabel("(wkrótce)"))
+        layout.addStretch()
+        return w
+
+    # ── Zakładka 3: Axes & Labels ─────────────────────────────────────────────
+    def _build_labels_tab(self, p: dict) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+        layout.setContentsMargins(8, 12, 8, 8)
+        layout.addWidget(QLabel("(wkrótce)"))
+        layout.addStretch()
+        return w
+
+    # ── Zakładka 4: Color ─────────────────────────────────────────────────────
+    def _build_color_tab(self, p: dict) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+        layout.setContentsMargins(8, 12, 8, 8)
+        layout.addWidget(QLabel("(wkrótce)"))
+        layout.addStretch()
+        return w
+
+    # ── Getter ────────────────────────────────────────────────────────────────
+    def get_params(self) -> dict:
+        return {
+            "n_neighbors":  self.neighbors_spin.value(),
+            "min_dist":     self.min_dist_spin.value(),
+            "n_components": self.components_spin.value(),
+            "cofactor":     self.cofactor_spin.value(),
+        }
 
 # ── Single panel control block ───────────────────────────────────────────────
 
@@ -63,6 +164,12 @@ class PanelControl(QGroupBox):
         self.index         = index
         self.stained_path  = None
         self.control_path  = None
+        self.umap_params = {
+            "n_neighbors": 15,
+            "min_dist": 0.1,
+            "n_components": 3,
+            "cofactor": 150.0,
+        }
         self._build_ui()
 
     def _build_ui(self):
@@ -88,14 +195,6 @@ class PanelControl(QGroupBox):
         btn_c.clicked.connect(self._browse_control)
         layout.addWidget(btn_c)
 
-        # ── n_neighbors ──
-        layout.addWidget(self._small_label("n_neighbors"))
-        self.neighbors_combo = QComboBox()
-        self.neighbors_combo.addItems(["10", "15", "20", "30", "50"])
-        self.neighbors_combo.setCurrentText("15")
-        self.neighbors_combo.setFixedHeight(24)
-        layout.addWidget(self.neighbors_combo)
-
         # ── Run button ──
         self.run_btn = QPushButton("▶  Run UMAP")
         self.run_btn.setFixedHeight(28)
@@ -103,11 +202,32 @@ class PanelControl(QGroupBox):
         self.run_btn.clicked.connect(lambda: self.run_requested.emit(self.index))
         layout.addWidget(self.run_btn)
 
+        # ── Modify params button ──
+        self.modify_btn = QPushButton("⚙  Modify graph")
+        self.modify_btn.setFixedHeight(24)
+        self.modify_btn.setEnabled(False)
+        self.modify_btn.clicked.connect(self._open_params_dialog)
+        layout.addWidget(self.modify_btn)
+
+        # ── Status line ──
+        self.status_lbl = QLabel("no files selected")
+        ...
+
         # ── Status line ──
         self.status_lbl = QLabel("no files selected")
         self.status_lbl.setWordWrap(True)
         self.status_lbl.setStyleSheet("color: gray; font-size: 10px;")
         layout.addWidget(self.status_lbl)
+
+    def _open_params_dialog(self):
+        dialog = UMAPParamsDialog(current_params=self.umap_params, parent=self)
+        if dialog.exec():  # użytkownik kliknął Apply
+            self.umap_params = dialog.get_params()
+            n = self.umap_params["n_neighbors"]
+            d = self.umap_params["min_dist"]
+            self.status_lbl.setText(
+                f"params: n={n}, dist={d}"
+            )
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
@@ -150,6 +270,7 @@ class PanelControl(QGroupBox):
     def _refresh_run_btn(self):
         ready = bool(self.stained_path and self.control_path)
         self.run_btn.setEnabled(ready)
+        self.modify_btn.setEnabled(ready)
         if ready:
             self.status_lbl.setText("ready — press Run UMAP")
         else:
@@ -173,10 +294,6 @@ class PanelControl(QGroupBox):
         self.run_btn.setEnabled(True)
         self.run_btn.setText("▶  Run UMAP")
         self.status_lbl.setText(f"✗ {msg}")
-
-    @property
-    def n_neighbors(self) -> int:
-        return int(self.neighbors_combo.currentText())
 
     @property
     def sample_name(self) -> str:
@@ -211,24 +328,26 @@ class MainWindow(QMainWindow):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        # ── Left sidebar ──
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setHandleWidth(6)
+
         sidebar = self._build_sidebar()
-        root_layout.addWidget(sidebar)
+        splitter.addWidget(sidebar)
 
-        # ── Separator ──
-        sep = QFrame()
-        sep.setFrameShape(QFrame.VLine)
-        sep.setFrameShadow(QFrame.Plain)
-        sep.setStyleSheet("color: palette(mid);")
-        root_layout.addWidget(sep)
-
-        # ── 2×2 plot grid ──
         plot_area = self._build_plot_area()
-        root_layout.addWidget(plot_area, stretch=1)
+        splitter.addWidget(plot_area)
+
+        # Domyślne proporcje: sidebar ~200px, reszta dla wykresów
+        splitter.setSizes([200, 1300])
+        # Wykresy mogą się kurczyć, sidebar ma minimum
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+
+        root_layout.addWidget(splitter)
 
     def _build_sidebar(self) -> QWidget:
         container = QWidget()
-        container.setFixedWidth(230)
+        container.setMinimumWidth(160)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -330,10 +449,10 @@ class MainWindow(QMainWindow):
             stained_path  = pc.stained_path,
             control_path  = pc.control_path,
             sample_name   = pc.sample_name,
-            n_neighbors   = pc.n_neighbors,
-            min_dist      = 0.1,
-            n_components  = 3,
-            cofactor      = 150.0,
+            n_neighbors   = pc.umap_params["n_neighbors"],
+            min_dist      = pc.umap_params["min_dist"],
+            n_components  = pc.umap_params["n_components"],
+            cofactor      = pc.umap_params["cofactor"],
         )
         worker.finished.connect(lambda emb, ttl, idx=panel_index: self._on_done(idx, emb, ttl))
         worker.error.connect(lambda msg, idx=panel_index: self._on_error(idx, msg))
